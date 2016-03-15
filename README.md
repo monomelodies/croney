@@ -46,10 +46,6 @@ the cronjob with `* * * * *`, i.e. every minute.
 At Croney's core is an instance of the `Scheduler` class. This is what is used
 to run tasks and it takes care (as the name implies) of scheduling them.
 
-A `Scheduler` instance needs to track its status in a JSON file. Where you keep
-this doesn't matter, as long as the user executing the script has write access
-to it. The full path to this file is the constructor argument for a `Scheduler`.
-
 In your `bin/cron` file:
 
 ```
@@ -58,30 +54,98 @@ In your `bin/cron` file:
 
 use Croney\Scheduler;
 
-$scheduler = new Scheduler('/path/to/json.json');
+$scheduler = new Scheduler;
 ```
 
-Croney will create the file if it doesn't exist, so no need to worry about its
-contents. It's like `composer.lock`.
+## Adding tasks
+To add a task to the `Scheduler`, call its `task` method and supply a callable:
 
-> You'll definitely want to ignore this file in version control.
-
-
-
-## Setting up Croney's status file
-Croney needs to keep track of your tasks in a JSON file. Pass the location to
-this file as the first argument to the constructor of the `Scheduler`:
-
-```php
+```
 #!/usr/bin/php
 <?php
 
-use Croney\Scheduler;
-
-$scheduler = new Scheduler('/path/to/status/file.json');
+// ...
+$scheduler->task(function () {
+    // ...perform the task...
+});
 ```
 
-Inside the file, we will 
+This task gets run every minute (or whatever interval you set your cronjob to).
+A task can be any callable, but the `$this` property is bound to the scheduler
+itself (for utility purposes as we'll see shortly), so it's best to use an
+actual lambda.
+
+> If your task is stored e.g. inside a class method, just call it from the
+> lambda instead of passing it directly. The usage of `$this` would be ambiguous
+> otherwise, which might lead to complications down the road.
+
+When you've setup all your tasks, call `process` on the `Scheduler` to actually
+run them:
+
+```php
+<?php
+
+// ...
+$scheduler->process();
+```
+
+## Running tasks at specific intervals or times
+To have more control over when exactly a task is run, you call the `runAt`
+method on the bound `$this` object:
+
+```
+<?php
+
+$scheduler->task(function () {
+    $this->runAt('Y-m-d H:m');
+});
+```
+
+The parameter to `runAt` is a PHP date string which, when parsed using the run's
+start time, should `preg_match` it. The above example runs the task every minute
+(which is the default assuming your cronjob runs every minute). To run a task
+every five minutes instead, you'd write this:
+
+```php
+<?php
+
+$scheduler->task(function () {
+    $this->runAt('Y-m-d H:\d[05]');
+});
+```
+
+Note that the seconds part can be left off as it defaults to `":00"`. Also note
+that `runAt` breaks off the task if it's not due yet, so it should in almost all
+cases be the first statement in a task!
+
+> Any operations prior to `runAt` will always be executed. In rare cases this
+> might be intentional.
+
+## Running the script less often
+We mentioned earlier how you can also choose to run the cronjob less often than
+every minute, say every five minutes. If you only have tasks that run every five
+minutes (or multiples of that), that's fine and no further configuration is
+required. But what if you want to run your cronjob every five minutes, _but_
+still be able to schedule tasks based on minutes?
+
+> An example of this would be a cronjob that runs every five minutes, defining
+> five tasks, each of which is run one minute apart.
+
+On the `Scheduler` object, call the `setDuration` method. This takes a single
+integer parameter: the number of minutes the script is meant to run.
+
+```php
+<?php
+
+$scheduler->setDuration(5); // Runs for five minutes
+```
+
+(As you'll have guessed, the default value here is `1`.)
+
+## Long running tasks
+
+
+## 
 ## Setup and usage
 
 ### Tracking status
