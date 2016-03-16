@@ -21,7 +21,7 @@ composer require monomelodies/croney
    autoloader.
 
 ## Setting up the executable
-Croney needs to run periodically, so create a simple executable the we will add
+Croney needs to run periodically, so create a simple executable that we will add
 as a cronjob:
 
 ```php
@@ -54,26 +54,27 @@ In your `bin/cron` file:
 
 use Croney\Scheduler;
 
-$scheduler = new Scheduler;
+$schedule = new Scheduler;
 ```
 
 ## Adding tasks
-To add a task to the `Scheduler`, call its `task` method and supply a callable:
+The `Scheduler` extends `ArrayObject`, so to add a task simply set it. The value
+should be a callable:
 
 ```
 #!/usr/bin/php
 <?php
 
 // ...
-$scheduler->task(function () {
+$schedule['some-task'] = function () {
     // ...perform the task...
-});
+};
 ```
 
 This task gets run every minute (or whatever interval you set your cronjob to).
-A task can be any callable, but the `$this` property is bound to the scheduler
-itself (for utility purposes as we'll see shortly), so it's best to use an
-actual lambda.
+A task can be any callable, including class methods (even static ones), but the
+`$this` property is bound to the scheduler itself (for utility purposes as we'll
+see shortly), so it's usually best to use an actual lambda.
 
 > If your task is stored e.g. inside a class method, just call it from the
 > lambda instead of passing it directly. The usage of `$this` would be ambiguous
@@ -86,22 +87,22 @@ run them:
 <?php
 
 // ...
-$scheduler->process();
+$schedule->process();
 ```
 
 ## Running tasks at specific intervals or times
-To have more control over when exactly a task is run, you call the `runAt`
+To have more control over when exactly a task is run, you call the `at`
 method on the bound `$this` object:
 
 ```
 <?php
 
-$scheduler->task(function () {
-    $this->runAt('Y-m-d H:m');
-});
+$scheduler['some-task'] = function () {
+    $this->at('Y-m-d H:m');
+};
 ```
 
-The parameter to `runAt` is a PHP date string which, when parsed using the run's
+The parameter to `at` is a PHP date string which, when parsed using the run's
 start time, should `preg_match` it. The above example runs the task every minute
 (which is the default assuming your cronjob runs every minute). To run a task
 every five minutes instead, you'd write this:
@@ -109,17 +110,22 @@ every five minutes instead, you'd write this:
 ```php
 <?php
 
-$scheduler->task(function () {
-    $this->runAt('Y-m-d H:\d[05]');
-});
+$scheduler['some-task'] = function () {
+    // Note the double escape for \d in the regex.
+    $this->at('Y-m-d H:\\\d[05]');
+};
 ```
 
-Note that the seconds part can be left off as it defaults to `":00"`. Also note
-that `runAt` breaks off the task if it's not due yet, so it should in almost all
-cases be the first statement in a task!
+> Due to PHP's `strtotime` implementation, you can leave the `Y-m-d` part off
+> for convenience if they're not relevant. The same goes for the hour/minute
+> part in which case they'll default to "midnight".
 
-> Any operations prior to `runAt` will always be executed. In rare cases this
-> might be intentional.
+Note that the seconds part can be left off as it defaults to `":00"`. Also note
+that `at` breaks off the task if it's not due yet, so it should in almost all
+cases be the first statement in a task.
+
+> Any operations prior to `at` will always be executed. In rare cases this might
+> be intentional, but normally it really won't be. Trust us.
 
 ## Running the script less often
 We mentioned earlier how you can also choose to run the cronjob less often than
@@ -129,7 +135,7 @@ required. But what if you want to run your cronjob every five minutes, _but_
 still be able to schedule tasks based on minutes?
 
 > An example of this would be a cronjob that runs every five minutes, defining
-> five tasks, each of which is run one minute apart.
+> five tasks, each of which is run one minute after the previous task.
 
 On the `Scheduler` object, call the `setDuration` method. This takes a single
 integer parameter: the number of minutes the script is meant to run.
@@ -142,99 +148,67 @@ $scheduler->setDuration(5); // Runs for five minutes
 
 (As you'll have guessed, the default value here is `1`.)
 
-## Long running tasks
-
-
-## 
-## Setup and usage
-
-### Tracking status
-Croney assumes your application has a database to log execution in. It also
-assumes said database is `PDO` compatible. In the `info/sql` folder you'll find
-table declarations, so make sure they exist in your RMDBS instance. If your
-vendor isn't supported out of the box, you'll have to write your own - otherwise
-just copy/paste. Just make sure the table and column names stay the same.
-
-We recommend just using an SQLite database for this, but you can also use your
-main database if you prefer.
-
-### Executing from the CLI
-You're going to need to schedule an executable script in your crontab, and we
-can't do that for you. Let's say we call it `bin/cron`.
-
-In essence, the script will look as follows:
+When you call `process`, the tasks will actually be run 5 times (once every
+minute) and executed when the time is there. E.g.:
 
 ```php
-#!/usr/bin/php
 <?php
 
-use Croney\Scheduler;
-
-(new Scheduler(new PDO($your_dsn_and_other_stuff))
-    ->task('a-unique-task-id', null, function () {
-        // do stuff related to this task
-    }))
-    // ... more tasks... 
-    ->process();
-```
-
-In Unix-like systems, run `crontab -e` and add `* * * * * /path/to/bin/cron` to
-let it run every minute.
-
-> The exact procedure or syntax here is system-dependent, but just let it run as
-> often as possible.
-
-On busy servers you can also specify less frequent intervals; Croney will still
-run all due jobs whenever it gets its turn.
-
-> Don't forget to mark the script as executable, e.g. `chmod a+x /your/script`
-> on Unix-like systems.
-
-## Defining and scheduling tasks
-Each task in Croney is simply a callable which is added to the `Scheduler` via
-its `task` method. On an initial run, all these tasks are executed (much like a
-Gulpfile). Hence the default is to run every defined task once each minute (or
-whatever you set your cronjob to - we're going to assume "each minute" for the
-rest of this readme).
-
-Of course Croney wouldn't be much use if it just executed all tasks every
-minute. The _second_ argument to `task` can be a string that is parsable by
-[PHP's strtotime](http://php.net/strtotime) specifying the next moment the job
-should be run.
-
-So if we would want our `"a-unique-task-id"` task to run every half hour we
-could call it like so:
-
-```php
 // ...
-$schedule->task('a-unique-task-id', '+30 minutes', function () {
-    // Task operations...
-});
+
+// First task, runs only on the first loop
+$scheduler['first-task'] = function () {
+    $this->at('H:00');
+};
+// Second task, runs only on the second loop
+$scheduler['second-task'] = function () {
+    $this->at('H:01');
+};
+// etc.
 ```
 
-Croney runs (at the most) every minute, so if you define a shorter interval it
-will be "rounded" to the next minute (or whatever you set your cronjob to).
-Croney simply executes all due jobs in the past, and since job names are unique
-there can only ever be one job of a type in any given cycle. So if you configure
-your cron script to run, say, every day at midnight, all tasks will only ever be
-executed once a day at the most.
+Croney calls PHP's `sleep` function in between loops.
 
-## Running at specific times
-The previous example showed how to run a task every half hour, but what if you
-need to run a task _on_ every half hour, exactly? After all, if we add the task
-at, say, 11:34AM it will run immediately, and be rescheduled for 12:34AM.
+> Croney tries to calculate the _actual_ number of seconds to sleep, so if the
+> tasks from the first loop took, say, 3 seconds in total it sleeps for 57
+> seconds before the next loop. Note however that this is _not_ exact and does
+> _not_ guarantee that your task will run _exactly_ on the dot. If your task
+> involves time-based operations make sure to "round down" the time to the
+> expected value.
 
-> Note that "exactly" depends on how many tasks you have and how long they take
-> to run; there might be a few seconds - or in extreme cases even minutes -
-> delay before the task starts.
+In theory, you could let your script run at midnight on January the first and
+calculate everything from there. In the real world, this is obviously not
+practical since any error whatsoever means you have to wait a whole year to see
+if your fix solved the problem!
 
-Simply manually insert the task ID into the `croney_job` table, and specify a
-`datedue` in the future at the desired exact time. In the above case that would
-be `Y-m-d 12:00:00`. The task will now run for the first time in 26 minutes, and
-after that on every half hour since the due date gets increment by
-`+30 minutes`.
+Typical values are every 5 or 10 minutes, maybe 30 or 60 on very busy servers.
 
-After this is set up, add the task to the scheduler.
+## Long running tasks
+Typically a task runs in (micro)seconds, but sometimes one of your tasks will be
+"long running". If this is intentional (e.g. a periodic cleanup operation of
+user-uploaded files) you would obviously `runAt` it at a safe interval, and you
+should take care limit stuff in your task itself (e.g. "max 100 files per run").
+Still, every so often you'll need to write a task that should run often, but
+_might_ in extreme cases take longer than expected to do so.
+
+A fictional example: a task that reads a mailbox (e.g. to push them into a
+ticketing system). If that mailbox explodes for whatever reason (let's be
+positive and imagine your application became _really_ popular overnight ;)) this
+would pose a problem: the previous run might still be reading mails as the next
+run starts, causing mails to be handled twice. Obviously not desirable.
+
+Croney "locks" each task prior to running, and does not attempt to re-run as
+long as it is locked. If a run fails due to locking, a warning is logged and the
+task is retried periodically for as long as the cronjob runs. If the task
+couldn't be run before the cronjob ends, an error is logged.
+
+The locking is done based on an MD5 hash of the reflected callable, so any
+changes between runs will invalidate any existing locks.
 
 ## Error handling
+You can pass an instance of `Monolog\Logger` as an argument to the `Scheduler`
+constructor. This will then be used to log any messages triggered by tasks, in
+the way that you specified.
+
+If no logger was defined, all messages go to `STDERR`.
 
