@@ -55,7 +55,8 @@ class Scheduler extends ArrayObject
             fclose($fp);
         });
         if (--$this->minutes) {
-            sleep(60 - (time() - $start));
+            $wait = max(60 - (time() - $start), 0);
+            sleep($wait);
             $this->now += 60;
             $this->process();
         }
