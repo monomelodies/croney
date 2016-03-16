@@ -12,13 +12,18 @@ class Scheduler extends ArrayObject
     private $now;
     private $minutes = 1;
     private $jobs = [];
-    public $logger;
+    private $logger;
 
     public function __construct(Logger $logger = null)
     {
         set_time_limit(60);
         $this->now = strtotime(date('Y-m-d H:i:00'));
         $this->logger = isset($logger) ? $logger : new ErrorLogger;
+    }
+
+    public function __get($property)
+    {
+        return $property == 'logger' ? $this->logger : null;
     }
 
     /**
