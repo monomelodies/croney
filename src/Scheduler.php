@@ -4,9 +4,10 @@ namespace Croney;
 
 use InvalidArgumentException;
 use Exception;
+use ArrayObject;
 use Monolog\Logger;
 
-class Scheduler
+class Scheduler extends ArrayObject
 {
     private $now;
     private $minutes = 1;
@@ -24,9 +25,12 @@ class Scheduler
      *
      * @param callable $job The job.
      */
-    public function task(callable $job)
+    public function offsetSet($name, $job)
     {
-        $this->jobs[] = $job;
+        if (!is_callable($job)) {
+            throw new InvalidArgumentException('Each job must be callable');
+        }
+        $this->jobs[$name] = $job;
     }
 
     /**
@@ -34,23 +38,22 @@ class Scheduler
      */
     public function process()
     {
-        do {
-            $start = time();
-            array_walk($this->jobs, function ($job, $idx) {
-                try {
-                    $job->call($this);
-                } catch (NotDueException $e) {
-                } catch (Exception $e) {
-                    if ($this->logger) {
-                        $this->logger->addCritial($e->getMessage());
-                    }
+        $start = time();
+        array_walk($this->jobs, function ($job, $idx) {
+            try {
+                $job->call($this);
+            } catch (NotDueException $e) {
+            } catch (Exception $e) {
+                if ($this->logger) {
+                    $this->logger->addCritial($e->getMessage());
                 }
-            });
-            if ($this->minutes > 1) {
-                sleep(60 - (time() - $start));
-                $this->now += 60;
             }
-        } while (--$this->minutes);
+        });
+        if (--$this->minutes) {
+            sleep(60 - (time() - $start));
+            $this->now += 60;
+            $this->process();
+        }
     }
 
     /**
