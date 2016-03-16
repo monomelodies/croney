@@ -1,0 +1,13 @@
+{
+    "name": "monomelodies/croney",
+    "description": "PHP-based CRON scheduler",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Marijn Ophorst",
+            "email": "marijn@monomelodies.nl"
+        }
+    ],
+    "require": {}
+}
