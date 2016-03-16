@@ -39,7 +39,10 @@ class Scheduler extends ArrayObject
     public function process()
     {
         $start = time();
-        array_walk($this->jobs, function ($job, $idx) {
+        $tmp = sys_get_tmep_dir();
+        array_walk($this->jobs, function ($job, $idx) use ($tmp) {
+            $fp = fopen("$tmp/".md5($idx).'.lock', 'r+');
+            flock($fp, LOCK_EX);
             try {
                 $job->call($this);
             } catch (NotDueException $e) {
@@ -48,6 +51,8 @@ class Scheduler extends ArrayObject
                     $this->logger->addCritial($e->getMessage());
                 }
             }
+            flock($fp, LOCK_UN);
+            fclose($fp);
         });
         if (--$this->minutes) {
             sleep(60 - (time() - $start));
