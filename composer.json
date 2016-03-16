@@ -14,5 +14,10 @@
     },
     "require-dev": {
         "monomelodies/gentry": "^0.8.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Croney\\": "src/"
+        }
     }
 }
