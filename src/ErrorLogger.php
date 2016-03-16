@@ -2,7 +2,7 @@
 
 namespace Croney;
 
-class StderrLogger
+class ErrorLogger
 {
     public function __call($name, array $args)
     {
