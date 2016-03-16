@@ -12,7 +12,7 @@ class Scheduler extends ArrayObject
     private $now;
     private $minutes = 1;
     private $jobs = [];
-    private $logger;
+    public $logger;
 
     public function __construct(Logger $logger = null)
     {
