@@ -212,3 +212,6 @@ the way that you specified.
 
 If no logger was defined, all messages go to `STDERR`.
 
+The logger is available inside task callables via `$this->logger`, so individual
+tasks can also log to whatever you configured it with.
+
