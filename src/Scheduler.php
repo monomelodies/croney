@@ -45,9 +45,9 @@ class Scheduler extends ArrayObject
     public function process()
     {
         $start = time();
-        $tmp = sys_get_tmep_dir();
+        $tmp = sys_get_temp_dir();
         array_walk($this->jobs, function ($job, $idx) use ($tmp) {
-            $fp = fopen("$tmp/".md5($idx).'.lock', 'r+');
+            $fp = fopen("$tmp/".md5($idx).'.lock', 'w+');
             flock($fp, LOCK_EX);
             try {
                 $job->call($this);
