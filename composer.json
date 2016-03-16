@@ -11,5 +11,8 @@
     ],
     "require": {
         "monolog/monolog": "^1.18"
+    },
+    "require-dev": {
+        "monomelodies/gentry": "^0.8.5"
     }
 }
