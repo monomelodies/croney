@@ -9,11 +9,11 @@
             "email": "marijn@monomelodies.nl"
         }
     ],
-    "require": {
-        "monolog/monolog": "^1.18"
-    },
     "require-dev": {
         "monomelodies/gentry": "^0.8.5"
+    },
+    "suggest": {
+        "monolog/monolog": "Log task output somewhere more useful than STDERR"
     },
     "autoload": {
         "psr-4": {
