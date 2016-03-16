@@ -1,0 +1,10 @@
+site_name: Croney documentation
+site_url: http://croney.monomelodies.nl
+site_repo: https://github.com/monomelodies/croney
+
+pages:
+- Home:
+    - 'Overview': 'index.md'
+
+copyright: Copyright &copy; 2016, <a href="http://monomelodies.nl/">Marijn Ophorst</a>
+
