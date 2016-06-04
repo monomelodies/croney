@@ -105,25 +105,33 @@ $scheduler['some-task'] = function () {
 The parameter to `at` is a PHP date string which, when parsed using the run's
 start time, should `preg_match` it. The above example runs the task every minute
 (which is the default assuming your cronjob runs every minute). To run a task
-every five minutes instead, you'd write this:
+every five minutes instead, you'd write something like this:
 
 ```php
 <?php
 
 $scheduler['some-task'] = function () {
     // Note the double escape for \d in the regex.
-    $this->at('Y-m-d H:\\\d[05]');
+    $this->at('Y-m-d H:[0-5][05]');
 };
 ```
+
+Note that the `date` function works with placeholders, so if you need to regex
+on e.g. a decimal (`\d`) you would need to double-escape it. See the PHP manual
+page for `date` for a list of all valid placeholders.
 
 > `preg_match` is called without checking string position, i.e. if you would
 > pass only `'H'` as the date to match it would run on the hour, but also every
 > minute (since 00-24 are all valid minutes and it would match `'i'` as well)
-> _and_ also every day, month and all years. So be specific!
+> _and_ also every day, month and (for all practical purposes since I'm not
+> expecting this library to still be alive by the year 2399 ;)) all years. So be
+> as specific as you need!
 
-Note that the seconds part can be left off as it defaults to `":00"`. Also note
-that `at` breaks off the task if it's not due yet, so it should in almost all
-cases be the first statement in a task.
+Note that the seconds part is irrelevant due to the granularity of cron and
+should be omitted or your task will likely never run (since the date it is
+compared to also doesn't include seconds). Also note that `at` breaks off the
+task if it's not due yet, so it should in almost all cases be the first
+statement in a task.
 
 > Any operations prior to `at` will always be executed. In rare cases this might
 > be intentional, but normally it really won't be. Trust us.
