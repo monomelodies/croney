@@ -116,9 +116,10 @@ $scheduler['some-task'] = function () {
 };
 ```
 
-> Due to PHP's `strtotime` implementation, you can leave the `Y-m-d` part off
-> for convenience if they're not relevant. The same goes for the hour/minute
-> part in which case they'll default to "midnight".
+> `preg_match` is called without checking string position, i.e. if you would
+> pass only `'H'` as the date to match it would run on the hour, but also every
+> minute (since 00-24 are all valid minutes and it would match `'i'` as well)
+> _and_ also every day, month and all years. So be specific!
 
 Note that the seconds part can be left off as it defaults to `":00"`. Also note
 that `at` breaks off the task if it's not due yet, so it should in almost all
